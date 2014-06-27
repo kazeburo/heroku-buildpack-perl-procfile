@@ -35,5 +35,5 @@ if [ -d $BUILD_DIR/local ]; then
 fi
 
 mkdir -p $BUILD/.profile.d
-echo 'PATH=$BUILD_DIR/local/bin:$PATH:$HOME/bin' > $build/.profile.d/perl-procfile.sh
-echo 'PERL5OPT=-Mlib=$BUILD_DIR/local/lib/perl5' >> $build/.profile.d/perl-procfile.sh
+echo 'PATH=$BUILD_DIR/local/bin:$PATH:$HOME/bin' > $BUILD_DIR/.profile.d/perl-procfile.sh
+echo 'PERL5OPT=-Mlib=$BUILD_DIR/local/lib/perl5' >> $BUILD_DIR/.profile.d/perl-procfile.sh
