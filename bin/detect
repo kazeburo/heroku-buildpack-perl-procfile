@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# this pack is valid for apps with an app.psgi in the root
+if [ -f $1/Makefile.PL -o -f $1/Build.PL -o -f $1/META.json -o -f $1/cpanfile ]; then
+  if [ -f $1/Procfile ]; then
+    echo "Perl/Procfile"
+    exit 0
+  fi
+else
+  exit 1
+fi

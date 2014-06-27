@@ -1,0 +1,39 @@
+#!/bin/sh
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+mkdir -p "$1" "$2"
+BUILD_DIR=$(cd "$1" && pwd)
+CACHE_DIR=$(cd "$2" && pwd)
+
+PATH="$BUILD_DIR/local/bin:$PATH"
+
+export PERL5LIB="$BUILD_DIR/local/lib/perl5"
+export PERL_CPANM_OPT="--quiet --notest --no-man-pages -l $BUILD_DIR/local"
+
+rm -rf $BUILD_DIR/local
+if [ -d $CACHE_DIR/local ]; then
+  cp -a $CACHE_DIR/local $BUILD_DIR/local
+fi
+
+cd $BUILD_DIR
+
+if ! [ -e $BUILD_DIR/local/bin/cpanm ]; then
+  echo "-----> Bootstrapping cpanm"
+  curl -L --silent https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus 2>&1 | indent
+fi
+
+echo "-----> Installing dependencies"
+cpanm --installdeps . 2>&1 | indent
+
+if [ -d $BUILD_DIR/local ]; then
+  rm -rf $CACHE_DIR/local
+  mkdir -p $CACHE_DIR
+  cp -a $BUILD_DIR/local $CACHE_DIR/local
+fi
+
+mkdir -p $BUILD/.profile.d
+echo 'PATH=$BUILD_DIR/local/bin:$PATH:$HOME/bin' > $build/.profile.d/perl-procfile.sh
+echo 'PERL5OPT=-Mlib=$BUILD_DIR/local/lib/perl5' >> $build/.profile.d/perl-procfile.sh
