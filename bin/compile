@@ -37,4 +37,4 @@ fi
 mkdir -p $BUILD_DIR/.profile.d
 echo 'APPDIR=$(cd $(dirname $0) && pwd)' > $BUILD_DIR/.profile.d/perl-procfile.sh
 echo 'export PATH=$APPDIR/local/bin:$PATH:$HOME/bin' >> $BUILD_DIR/.profile.d/perl-procfile.sh
-echo 'export PERL5OPT=-Mlib=APPDIR/local/lib/perl5' >> $BUILD_DIR/.profile.d/perl-procfile.sh
+echo 'export PERL5OPT=-Mlib=$APPDIR/local/lib/perl5' >> $BUILD_DIR/.profile.d/perl-procfile.sh
