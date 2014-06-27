@@ -34,6 +34,6 @@ if [ -d $BUILD_DIR/local ]; then
   cp -a $BUILD_DIR/local $CACHE_DIR/local
 fi
 
-mkdir -p $BUILD/.profile.d
+mkdir -p $BUILD_DIR/.profile.d
 echo 'PATH=$BUILD_DIR/local/bin:$PATH:$HOME/bin' > $BUILD_DIR/.profile.d/perl-procfile.sh
 echo 'PERL5OPT=-Mlib=$BUILD_DIR/local/lib/perl5' >> $BUILD_DIR/.profile.d/perl-procfile.sh
