@@ -32,25 +32,26 @@ main() {
 build() {
    local BUILD_DIR="$1"
    local ENV_DIR="$2"
+   local invocation
 
    # execute in subshell to avoid change directory side effects
    (
       cd "$BUILD_DIR"
 
-      if ! [ -e "$BUILD_DIR/local/bin/cpanm" ]; then
+      if [ ! -e "$BUILD_DIR/local/bin/cpanm" ]; then
          echo "-----> Bootstrapping cpanm"
-         local curlinv=$(
+         invocation="$(
             curl -L --silent "$CPANM"        \
                | perl - App::cpanminus 2>&1
-         )
-         echo "$curlinv" | indent
+         )"
+         echo "$invocation" | indent
       fi
 
       echo "-----> Installing dependencies"
       local CPANM_OPTS=''
       [ -f "$ENV_DIR/PERL_CPANM_OPT" ] \
          && CPANM_OPTS="$(cat "$ENV_DIR/PERL_CPANM_OPT")"
-      local invocation=$(
+      invocation="$(
          cpanm 2>&1                 \
             --quiet                 \
             --notest                \
@@ -58,7 +59,7 @@ build() {
             -l "$BUILD_DIR/local"   \
             $CPANM_OPTS             \
             --installdeps
-      )
+      )"
       echo "$invocation" | indent
    )
 }
