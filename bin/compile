@@ -3,6 +3,9 @@
 CPANM='https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm'
 
 main() {
+   # fail fast and fail hard
+   set -eo pipefail
+
    local BUILD_DIR="$(ensure_dir "$1")"
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
@@ -10,9 +13,6 @@ main() {
    # not sure these actually make sense here, but they don't harm anyway
    export PATH="$BUILD_DIR/local/bin:$PATH"
    export PERL5LIB="$BUILD_DIR/local/lib/perl5;$PERL5LIB"
-
-   # fail fast and fail hard
-   set -eo pipefail
 
    # reuse last compilations if available
    copy_local "$CACHE_DIR" "$BUILD_DIR"
