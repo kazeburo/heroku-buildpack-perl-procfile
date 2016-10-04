@@ -2,7 +2,6 @@
 
 CPANM='https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm'
 
-
 main() {
    local BUILD_DIR="$(ensure_dir "$1")"
    local CACHE_DIR="$(ensure_dir "$2")"
@@ -13,7 +12,7 @@ main() {
    export PERL5LIB="$BUILD_DIR/local/lib/perl5;$PERL5LIB"
 
    # fail fast and fail hard
-   set -eo pipefail
+   set -e
 
    # reuse last compilations if available
    copy_local "$CACHE_DIR" "$BUILD_DIR"
@@ -40,23 +39,27 @@ build() {
 
       if ! [ -e "$BUILD_DIR/local/bin/cpanm" ]; then
          echo "-----> Bootstrapping cpanm"
-         curl -L --silent "$CPANM"        \
-            | perl - App::cpanminus 2>&1  \
-            | indent
+         local curlinv=$(
+            curl -L --silent "$CPANM"        \
+               | perl - App::cpanminus 2>&1
+         )
+         echo "$curlinv" | indent
       fi
 
       echo "-----> Installing dependencies"
       local CPANM_OPTS=''
       [ -f "$ENV_DIR/PERL_CPANM_OPT" ] \
          && CPANM_OPTS="$(cat "$ENV_DIR/PERL_CPANM_OPT")"
-      cpanm 2>&1                 \
-         --quiet                 \
-         --notest                \
-         --no-man-pages          \
-         -l "$BUILD_DIR/local"   \
-         $CPANM_OPTS             \
-         --installdeps .         \
-         | indent
+      local invocation=$(
+         cpanm 2>&1                 \
+            --quiet                 \
+            --notest                \
+            --no-man-pages          \
+            -l "$BUILD_DIR/local"   \
+            $CPANM_OPTS             \
+            --installdeps
+      )
+      echo "$invocation" | indent
    )
 }
 
