@@ -1,40 +1,94 @@
 #!/bin/sh
 
+CPANM='https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm'
+
+
+main() {
+   local BUILD_DIR="$(ensure_dir "$1")"
+   local CACHE_DIR="$(ensure_dir "$2")"
+   local ENV_DIR="$(ensure_dir "$3")"
+
+   # not sure these actually make sense here, but they don't harm anyway
+   export PATH="$BUILD_DIR/local/bin:$PATH"
+   export PERL5LIB="$BUILD_DIR/local/lib/perl5;$PERL5LIB"
+
+   # fail fast and fail hard
+   set -eo pipefail
+
+   # reuse last compilations if available
+   copy_local "$CACHE_DIR" "$BUILD_DIR"
+
+   # build what's necessary
+   build "$BUILD_DIR" "$ENV_DIR"
+
+   # save compilation in cache for future reuse
+   [ -d "$BUILD_DIR/local" ] && copy_local "$BUILD_DIR" "$CACHE_DIR"
+
+   # prepare files with environment for run stage
+   prepare_run_environment "$BUILD_DIR"
+
+   return 0
+}
+
+build() {
+   local BUILD_DIR="$1"
+   local ENV_DIR="$2"
+
+   # execute in subshell to avoid change directory side effects
+   (
+      cd "$BUILD_DIR"
+
+      if ! [ -e "$BUILD_DIR/local/bin/cpanm" ]; then
+         echo "-----> Bootstrapping cpanm"
+         curl -L --silent "$CPANM"        \
+            | perl - App::cpanminus 2>&1  \
+            | indent
+      fi
+
+      echo "-----> Installing dependencies"
+      local CPANM_OPTS=''
+      [ -f "$ENV_DIR/PERL_CPANM_OPT" ] \
+         && CPANM_OPTS="$(cat "$ENV_DIR/PERL_CPANM_OPT")"
+      cpanm 2>&1                 \
+         --quiet                 \
+         --notest                \
+         --no-man-pages          \
+         -l "$BUILD_DIR/local"   \
+         $CPANM_OPTS             \
+         --installdeps .         \
+         | indent
+   )
+}
+
+prepare_run_environment() {
+   local BUILD_DIR="$1"
+
+   mkdir -p "$BUILD_DIR/.profile.d"
+   cat > "$BUILD_DIR/.profile.d/perl-env.sh" <<'END'
+ME="$(readlink -f "$0")"
+MD="$(dirname "$ME")"
+export PATH="$MD/local/bin:$HOME/bin:$PATH"
+export PERL5LIB="$MD/local/lib/perl5:$PERL5LIB"
+END
+}
+
+copy_local() {
+   local SOURCE_DIR="$1"
+   local DESTINATION_DIR="$2"
+   rm -rf "$DESTINATION_DIR/local"
+   if [ -d "$SOURCE_DIR/local" ]; then
+      mkdir -p "$DESTINATION_DIR/local"
+      cp -a "$SOURCE_DIR/local" "$DESTINATION_DIR/local"
+   fi
+}
+
+ensure_dir() {
+   mkdir -p "$1"
+   readlink -f "$1"
+}
+
 indent() {
   sed -u 's/^/       /'
 }
 
-mkdir -p "$1" "$2"
-BUILD_DIR=$(cd "$1" && pwd)
-CACHE_DIR=$(cd "$2" && pwd)
-
-PATH="$BUILD_DIR/local/bin:$PATH"
-
-export PERL5LIB="$BUILD_DIR/local/lib/perl5"
-export PERL_CPANM_OPT="--quiet --notest --no-man-pages -l $BUILD_DIR/local"
-
-rm -rf $BUILD_DIR/local
-if [ -d $CACHE_DIR/local ]; then
-  cp -a $CACHE_DIR/local $BUILD_DIR/local
-fi
-
-cd $BUILD_DIR
-
-if ! [ -e $BUILD_DIR/local/bin/cpanm ]; then
-  echo "-----> Bootstrapping cpanm"
-  curl -L --silent https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm | perl - App::cpanminus 2>&1 | indent
-fi
-
-echo "-----> Installing dependencies"
-cpanm --installdeps . 2>&1 | indent
-
-if [ -d $BUILD_DIR/local ]; then
-  rm -rf $CACHE_DIR/local
-  mkdir -p $CACHE_DIR
-  cp -a $BUILD_DIR/local $CACHE_DIR/local
-fi
-
-mkdir -p $BUILD_DIR/.profile.d
-echo 'APPDIR=$(cd $(dirname $0) && pwd)' > $BUILD_DIR/.profile.d/perl-procfile.sh
-echo 'export PATH=$APPDIR/local/bin:$PATH:$HOME/bin' >> $BUILD_DIR/.profile.d/perl-procfile.sh
-echo 'export PERL5OPT=-Mlib=$APPDIR/local/lib/perl5' >> $BUILD_DIR/.profile.d/perl-procfile.sh
+main "$@"

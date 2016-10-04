@@ -1,11 +1,17 @@
 #!/bin/sh
 
-# this pack is valid for apps with an app.psgi in the root
-if [ -f $1/Makefile.PL -o -f $1/Build.PL -o -f $1/META.json -o -f $1/cpanfile ]; then
-  if [ -f $1/Procfile ]; then
-    echo "Perl/Procfile"
-    exit 0
-  fi
-else
-  exit 1
-fi
+BUILD_DIR="$1"
+
+# ensure there's something Perl-related
+[                                   \
+      -f "$BUILD_DIR/Makefile.PL"   \
+   -o -f "$BUILD_DIR/Build.PL"      \
+   -o -f "$BUILD_DIR/META.json"     \
+   -o -f "$BUILD_DIR/cpanfile"      \
+] || exit 1
+
+# ensure there's a Procfile
+[ -f "$BUILD_DIR/Procfile" ] || exit 1
+
+echo 'Perl/Procfile'
+exit 0
