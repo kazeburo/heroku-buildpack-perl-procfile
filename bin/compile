@@ -70,9 +70,8 @@ prepare_run_environment() {
 
    mkdir -p "$BUILD_DIR/.profile.d"
    cat > "$BUILD_DIR/.profile.d/perl-env.sh" <<'END'
-export ME="$(readlink -f "$0")"
-export MD="$(dirname "$ME")"
-export BSOURCE="$BASH_SOURCE"
+ME="$(readlink -f "$BASH_SOURCE")"
+MD="$(dirname "$ME")"
 export PATH="$MD/local/bin:$HOME/bin:$PATH"
 export PERL5LIB="$MD/local/lib/perl5:$PERL5LIB"
 END
