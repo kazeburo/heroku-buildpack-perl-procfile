@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# vim: ft=sh :
 
 CPANM='https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm'
 
@@ -54,11 +55,23 @@ build() {
       local CPANM_OPTS=''
       [ -f "$ENV_DIR/PERL_CPANM_OPT" ] \
          && CPANM_OPTS="$(cat "$ENV_DIR/PERL_CPANM_OPT")"
+      declare -a EPAN
+      local _d d
+      for _d in epan dpan ; do
+         d="$PWD/$_d"
+         [ -d "$d" ] || continue
+         EPAN=("${EPAN[@]}" '--mirror' "file://$d")
+      done
+      if [ "${#EPAN[@]}" -gt 0 ] ; then
+         # append "usual" mirrors
+         EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org')
+      fi
       cpanm 2>&1                 \
          --quiet                 \
          --notest                \
          --no-man-pages          \
          -l "$BUILD_DIR/local"   \
+         "${EPAN[@]}"            \
          $CPANM_OPTS             \
          --installdeps .         \
          | indent
