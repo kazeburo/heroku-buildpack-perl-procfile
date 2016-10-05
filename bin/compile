@@ -80,8 +80,7 @@ copy_local() {
    local DESTINATION_DIR="$2"
    rm -rf "$DESTINATION_DIR/local"
    if [ -d "$SOURCE_DIR/local" ]; then
-      mkdir -p "$DESTINATION_DIR/local"
-      cp -a "$SOURCE_DIR/local" "$DESTINATION_DIR/local"
+      cp -a "$SOURCE_DIR/local" "$DESTINATION_DIR"
    fi
 }
 
