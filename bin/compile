@@ -13,7 +13,7 @@ main() {
 
    # not sure these actually make sense here, but they don't harm anyway
    export PATH="$BUILD_DIR/local/bin:$PATH"
-   export PERL5LIB="$BUILD_DIR/local/lib/perl5;$PERL5LIB"
+   export PERL5LIB="$BUILD_DIR/local/lib/perl5:$PERL5LIB"
 
    # reuse last compilations if available
    copy_local "$CACHE_DIR" "$BUILD_DIR"
