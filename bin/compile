@@ -76,7 +76,6 @@ build() {
       fi
 
       echo "-----> Installing dependencies"
-      CPANM_OPTS="$CPANM_OPTS $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')"
 
       declare -a EPAN
       local _d d
@@ -89,12 +88,22 @@ build() {
          # append "usual" mirrors
          EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org')
       fi
-      cpanm 2>&1                 \
-         --notest                \
+      echo cpanm 2>&1                 \
          --no-man-pages          \
+         $CPANM_OPTS             \
+         $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') \
+         $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')   \
          -l "$BUILD_DIR/local"   \
          "${EPAN[@]}"            \
+         --installdeps .         \
+         | indent
+      cpanm 2>&1                 \
+         --no-man-pages          \
          $CPANM_OPTS             \
+         $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') \
+         $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')   \
+         -l "$BUILD_DIR/local"   \
+         "${EPAN[@]}"            \
          --installdeps .         \
          | indent
    )
