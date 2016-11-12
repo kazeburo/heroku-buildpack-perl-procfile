@@ -13,9 +13,14 @@ main() {
 
    echo "-----> 'compile' parameters"
    (
+      env
+      echo ''
       echo "BUILD_DIR [$BUILD_DIR]"
+      ls -l "$BUILD_DIR"
       echo "CACHE_DIR [$CACHE_DIR]"
+      ls -l "$CACHE_DIR"
       echo "ENV_DIR   [$ENV_DIR]"
+      ls -l "$ENV_DIR"
    ) | indent
 
    # not sure these actually make sense here, but they don't harm anyway
