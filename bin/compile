@@ -11,17 +11,19 @@ main() {
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
 
-   echo "-----> 'compile' parameters"
-   (
-      env
-      echo ''
-      echo "BUILD_DIR [$BUILD_DIR]"
-      ls -l "$BUILD_DIR"
-      echo "CACHE_DIR [$CACHE_DIR]"
-      ls -l "$CACHE_DIR"
-      echo "ENV_DIR   [$ENV_DIR]"
-      ls -l "$ENV_DIR"
-   ) | indent
+   if [ -n "$BUILDPACK_VERBOSE" ] ; then
+      echo "-----> 'compile' parameters"
+      (
+         env | sort
+         echo ''
+         echo "BUILD_DIR [$BUILD_DIR]"
+         ls -l "$BUILD_DIR"
+         echo "CACHE_DIR [$CACHE_DIR]"
+         ls -l "$CACHE_DIR"
+         echo "ENV_DIR   [$ENV_DIR]"
+         ls -l "$ENV_DIR"
+      ) | indent
+   fi
 
    # not sure these actually make sense here, but they don't harm anyway
    export PATH="$BUILD_DIR/local/bin:$PATH"
@@ -42,9 +44,20 @@ main() {
    return 0
 }
 
+_get_var() {
+   local VARFILE="$1"
+   local DEFAULT="$2"
+   if [ -e "$VARFILE" ] ; then
+      cat "$VARFILE"
+   else
+      echo "$DEFAULT"
+   fi
+}
+
 build() {
    local BUILD_DIR="$1"
    local ENV_DIR="$2"
+   local somevar
 
    # execute in subshell to avoid change directory side effects
    (
@@ -63,9 +76,8 @@ build() {
       fi
 
       echo "-----> Installing dependencies"
-      local CPANM_OPTS=''
-      [ -f "$ENV_DIR/PERL_CPANM_OPT" ] \
-         && CPANM_OPTS="$(cat "$ENV_DIR/PERL_CPANM_OPT")"
+      CPANM_OPTS="$CPANM_OPTS $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')"
+
       declare -a EPAN
       local _d d
       for _d in epan dpan ; do
@@ -78,7 +90,6 @@ build() {
          EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org')
       fi
       cpanm 2>&1                 \
-         --quiet                 \
          --notest                \
          --no-man-pages          \
          -l "$BUILD_DIR/local"   \
