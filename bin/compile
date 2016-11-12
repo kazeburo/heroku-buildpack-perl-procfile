@@ -11,6 +11,13 @@ main() {
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
 
+   echo "-----> 'compile' parameters"
+   (
+      echo "BUILD_DIR [$BUILD_DIR]"
+      echo "CACHE_DIR [$CACHE_DIR]"
+      echo "ENV_DIR   [$ENV_DIR]"
+   ) | indent
+
    # not sure these actually make sense here, but they don't harm anyway
    export PATH="$BUILD_DIR/local/bin:$PATH"
    export PERL5LIB="$BUILD_DIR/local/lib/perl5:$PERL5LIB"
@@ -33,7 +40,6 @@ main() {
 build() {
    local BUILD_DIR="$1"
    local ENV_DIR="$2"
-   local invocation
 
    # execute in subshell to avoid change directory side effects
    (
