@@ -85,8 +85,8 @@ build() {
          EPAN=("${EPAN[@]}" '--mirror' "file://$d")
       done
       if [ "${#EPAN[@]}" -gt 0 ] ; then
-         # append "usual" mirrors
-         EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org')
+         # append "usual" mirrors and use mirrors for index
+         EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org' '--mirror-only')
       fi
       cpanm 2>&1                 \
          --no-man-pages          \
