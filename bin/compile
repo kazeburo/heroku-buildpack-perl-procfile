@@ -11,8 +11,7 @@ main() {
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
 
-   [ -n "$BUILDPACK_VERBOSE" ] &&
-      _print_build_details "$BUILD_DIR" "$CACHE_DIR" "$ENV_DIR"
+   [ -n "$BUILDPACK_VERBOSE" ] && __print_build_details
 
    # not sure these actually make sense here, but they don't harm anyway
    export PATH="$BUILD_DIR/local/bin:$PATH"
@@ -33,10 +32,7 @@ main() {
    return 0
 }
 
-_print_build_details() {
-   local BUILD_DIR="$1"
-   local CACHE_DIR="$2"
-   local ENV_DIR="$3"
+__print_build_details() {
    echo "-----> 'compile' parameters"
    (
       env | sort
