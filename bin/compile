@@ -30,13 +30,13 @@ main() {
    export PERL5LIB="$BUILD_DIR/local/lib/perl5:$PERL5LIB"
 
    # reuse last compilations if available
-   copy_local "$CACHE_DIR" "$BUILD_DIR"
+   copy_thing local "$CACHE_DIR" "$BUILD_DIR"
 
    # build what's necessary
    build "$BUILD_DIR" "$ENV_DIR"
 
    # save compilation in cache for future reuse
-   [ -d "$BUILD_DIR/local" ] && copy_local "$BUILD_DIR" "$CACHE_DIR"
+   [ -d "$BUILD_DIR/local" ] && copy_thing local "$BUILD_DIR" "$CACHE_DIR"
 
    # prepare files with environment for run stage
    prepare_run_environment "$BUILD_DIR"
@@ -110,13 +110,15 @@ export PERL5LIB="$HOME/local/lib/perl5:$PERL5LIB"
 END
 }
 
-copy_local() {
-   local SOURCE_DIR="$1"
-   local DESTINATION_DIR="$2"
-   rm -rf "$DESTINATION_DIR/local"
-   if [ -d "$SOURCE_DIR/local" ]; then
-      cp -a "$SOURCE_DIR/local" "$DESTINATION_DIR"
+copy_thing() {
+   local THING="$1"
+   local SOURCE_DIR="$2"
+   local DESTINATION_DIR="$3"
+   rm -rf "$DESTINATION_DIR/$THING"
+   if [ -d "$SOURCE_DIR/$THING" ]; then
+      cp -a "$SOURCE_DIR/$THING" "$DESTINATION_DIR"
    fi
+
 }
 
 ensure_dir() {
