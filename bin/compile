@@ -56,26 +56,29 @@ _get_var() {
    fi
 }
 
+__bootstrap_cpanm() {
+   echo "-----> Bootstrapping cpanm"
+   curl -L --silent "$CPANM"        \
+      | perl - App::cpanminus 2>&1  \
+         --quiet                    \
+         --notest                   \
+         --no-man-pages             \
+         $CPANM_OPTS                \
+         -l "$BUILD_DIR/local"      \
+      | indent
+}
+
 build() {
    local BUILD_DIR="$1"
    local ENV_DIR="$2"
-   local somevar
 
    # execute in subshell to avoid change directory side effects
    (
       cd "$BUILD_DIR"
 
-      if [ ! -e "$BUILD_DIR/local/bin/cpanm" ]; then
-         echo "-----> Bootstrapping cpanm"
-         curl -L --silent "$CPANM"        \
-            | perl - App::cpanminus 2>&1  \
-               --quiet                    \
-               --notest                   \
-               --no-man-pages             \
-               $CPANM_OPTS                \
-               -l "$BUILD_DIR/local"      \
-            | indent
-      fi
+      local CPANM_OPTS="$(_get_var "$ENV/PERL_CPANM_OPTS" "$CPANM_OPTS")"
+
+      [ ! -e "$BUILD_DIR/local/bin/cpanm" ] && __bootstrap_cpanm
 
       echo "-----> Installing dependencies"
 
