@@ -68,6 +68,30 @@ __bootstrap_cpanm() {
       | indent
 }
 
+__install_perl_dependencies() {
+   echo "-----> Installing dependencies"
+   declare -a EPAN
+   local _d d
+   for _d in epan dpan ; do
+      d="$PWD/$_d"
+      [ -d "$d" ] || continue
+      EPAN=("${EPAN[@]}" '--mirror' "file://$d")
+   done
+   if [ "${#EPAN[@]}" -gt 0 ] ; then
+      # append "usual" mirrors and use mirrors for index
+      EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org' '--mirror-only')
+   fi
+   cpanm 2>&1                 \
+      --no-man-pages          \
+      $CPANM_OPTS             \
+      $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') \
+      $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')   \
+      -l "$BUILD_DIR/local"   \
+      "${EPAN[@]}"            \
+      --installdeps .         \
+      | indent
+}
+
 build() {
    local BUILD_DIR="$1"
    local ENV_DIR="$2"
@@ -77,31 +101,8 @@ build() {
       cd "$BUILD_DIR"
 
       local CPANM_OPTS="$(_get_var "$ENV/PERL_CPANM_OPTS" "$CPANM_OPTS")"
-
       [ ! -e "$BUILD_DIR/local/bin/cpanm" ] && __bootstrap_cpanm
-
-      echo "-----> Installing dependencies"
-
-      declare -a EPAN
-      local _d d
-      for _d in epan dpan ; do
-         d="$PWD/$_d"
-         [ -d "$d" ] || continue
-         EPAN=("${EPAN[@]}" '--mirror' "file://$d")
-      done
-      if [ "${#EPAN[@]}" -gt 0 ] ; then
-         # append "usual" mirrors and use mirrors for index
-         EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org' '--mirror-only')
-      fi
-      cpanm 2>&1                 \
-         --no-man-pages          \
-         $CPANM_OPTS             \
-         $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') \
-         $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')   \
-         -l "$BUILD_DIR/local"   \
-         "${EPAN[@]}"            \
-         --installdeps .         \
-         | indent
+      __install_perl_dependencies
    )
 }
 
