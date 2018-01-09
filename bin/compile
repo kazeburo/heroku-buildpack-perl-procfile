@@ -11,19 +11,8 @@ main() {
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
 
-   if [ -n "$BUILDPACK_VERBOSE" ] ; then
-      echo "-----> 'compile' parameters"
-      (
-         env | sort
-         echo ''
-         echo "BUILD_DIR [$BUILD_DIR]"
-         ls -l "$BUILD_DIR"
-         echo "CACHE_DIR [$CACHE_DIR]"
-         ls -l "$CACHE_DIR"
-         echo "ENV_DIR   [$ENV_DIR]"
-         ls -l "$ENV_DIR"
-      ) | indent
-   fi
+   [ -n "$BUILDPACK_VERBOSE" ] &&
+      _print_build_details "$BUILD_DIR" "$CACHE_DIR" "$ENV_DIR"
 
    # not sure these actually make sense here, but they don't harm anyway
    export PATH="$BUILD_DIR/local/bin:$PATH"
@@ -42,6 +31,23 @@ main() {
    prepare_run_environment "$BUILD_DIR"
 
    return 0
+}
+
+_print_build_details() {
+   local BUILD_DIR="$1"
+   local CACHE_DIR="$2"
+   local ENV_DIR="$3"
+   echo "-----> 'compile' parameters"
+   (
+      env | sort
+      echo ''
+      echo "BUILD_DIR [$BUILD_DIR]"
+      ls -l "$BUILD_DIR"
+      echo "CACHE_DIR [$CACHE_DIR]"
+      ls -l "$CACHE_DIR"
+      echo "ENV_DIR   [$ENV_DIR]"
+      ls -l "$ENV_DIR"
+   ) | indent
 }
 
 _get_var() {
