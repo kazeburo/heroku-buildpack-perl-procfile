@@ -124,6 +124,7 @@ __install_cpanm() {
 }
 
 __restore_system_perl() {
+   echo 'restoring system perl'
    rm -rf "$BUILD_DIR/local/perl"
    rm -f "$BUILD_DIR/local/bin/cpanm"
 }
@@ -131,32 +132,39 @@ __restore_system_perl() {
 __install_perl() {
    local FLAG_FILE="$BUILD_DIR/.perl-archive"
 
+   echo "-----> Installing perl"
+
    # revert to system perl if no custom one is requested
    if [ ! -r "$FLAG_FILE" ] ; then
-      [ -d "$BUILD_DIR/local/perl" ] && __restore_system_perl
+      [ -d "$BUILD_DIR/local/perl" ] && __restore_system_perl | indent
       return 0
    fi
 
    # if the requested perl did not change... do nothing
    local LOCAL_FLAG_FILE="$BUILD_DIR/local/.perl-archive"
-   diff >/dev/null 2>&1 "$FLAG_FILE" "$LOCAL_FLAG_FILE" \
-      && return 0
+   if diff >/dev/null 2>&1 "$FLAG_FILE" "$LOCAL_FLAG_FILE" ; then
+      echo keeping previous perl | indent
+      return 0
+   fi
 
-   # remove any previous custom perl, we have to change it anyway
-   __restore_system_perl
+   {
+      # remove any previous custom perl, we have to change it anyway
+      __restore_system_perl
 
-   # download and extract new one
-   local URL="$(<"$BUILD_DIR/.perl-archive")"
-   curl -s -L "$URL" | tar xzf -
+      # download and extract new one
+      local URL="$(<"$BUILD_DIR/.perl-archive")"
+      echo "getting perl from $URL"
+      curl -s -L "$URL" | tar xzf -
 
-   # move to target place, then make hash-bangs general
-   local ARCHIVE="${URL##*/}"
-   local VERSION="${ARCHIVE%.tar*}"
-   mv "$VERSION" "$BUILD_DIR/local/perl"
-   relocate "$BUILD_DIR/local/perl/bin"/*
+      # move to target place, then make hash-bangs general
+      local ARCHIVE="${URL##*/}"
+      local VERSION="${ARCHIVE%.tar*}"
+      mv "$VERSION" "$BUILD_DIR/local/perl"
+      relocate "$BUILD_DIR/local/perl/bin"/*
 
-   # save flag file for comparison in next build
-   cp "$FLAG_FILE" "$LOCAL_FLAG_FILE"
+      # save flag file for comparison in next build
+      cp "$FLAG_FILE" "$LOCAL_FLAG_FILE"
+   } | indent
 }
 
 copy_local() {
