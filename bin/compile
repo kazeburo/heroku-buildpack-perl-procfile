@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # vim: ft=sh :
+# ideas also from: https://github.com/mvgrimes/heroku-buildpack-perl-carton
 
 CPANM='https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm'
 
@@ -11,20 +12,22 @@ main() {
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
 
-   [ -n "$BUILDPACK_VERBOSE" ] && __print_build_details
+   [ -n "$BUILDPACK_VERBOSE" ] && __print_buildpack_details
 
-   # not sure these actually make sense here, but they don't harm anyway
-   export PATH="$BUILD_DIR/local/bin:$PATH"
+   # use "new stuff" as much as possible. The custom "perl" will be wiped
+   # out if return to system perl is requested, so no harm in including
+   # that directory in any case
+   export PATH="$BUILD_DIR/local/bin:$BUILD_DIR/local/perl/bin:$PATH"
    export PERL5LIB="$BUILD_DIR/local/lib/perl5:$PERL5LIB"
 
    # reuse last compilations if available
-   copy_thing local "$CACHE_DIR" "$BUILD_DIR"
+   copy_local "$CACHE_DIR" "$BUILD_DIR"
 
    # build what's necessary
    build "$BUILD_DIR" "$ENV_DIR"
 
    # save compilation in cache for future reuse
-   [ -d "$BUILD_DIR/local" ] && copy_thing local "$BUILD_DIR" "$CACHE_DIR"
+   [ -d "$BUILD_DIR/local" ] && copy_local "$BUILD_DIR" "$CACHE_DIR"
 
    # prepare files with environment for run stage
    prepare_run_environment "$BUILD_DIR"
@@ -32,9 +35,35 @@ main() {
    return 0
 }
 
-__print_build_details() {
-   echo "-----> 'compile' parameters"
+build() {
+   local BUILD_DIR="$1"
+   local ENV_DIR="$2"
+
+   # execute in subshell to avoid change directory side effects
    (
+      local CPANM_OPTS="$(_get_var "$ENV/PERL_CPANM_OPTS" "$CPANM_OPTS")"
+      cd "$BUILD_DIR"
+      __install_perl
+      __install_cpanm
+      __install_dependencies
+   )
+}
+
+prepare_run_environment() {
+   local BUILD_DIR="$1"
+
+   # $HOME/local/perl/bin is always added, it might be missing but
+   # no harm done
+   mkdir -p "$BUILD_DIR/.profile.d"
+   cat > "$BUILD_DIR/.profile.d/perl-env.sh" <<'END'
+export PATH="$HOME/bin:$HOME/local/bin:$HOME/local/perl/bin:$PATH"
+export PERL5LIB="$HOME/local/lib/perl5:$PERL5LIB"
+END
+}
+
+__print_buildpack_details() {
+   echo "-----> 'compile' parameters"
+   {
       env | sort
       echo ''
       echo "BUILD_DIR [$BUILD_DIR]"
@@ -43,7 +72,7 @@ __print_build_details() {
       ls -l "$CACHE_DIR"
       echo "ENV_DIR   [$ENV_DIR]"
       ls -l "$ENV_DIR"
-   ) | indent
+   } | indent
 }
 
 _get_var() {
@@ -56,19 +85,7 @@ _get_var() {
    fi
 }
 
-__bootstrap_cpanm() {
-   echo "-----> Bootstrapping cpanm"
-   curl -L --silent "$CPANM"        \
-      | perl - App::cpanminus 2>&1  \
-         --quiet                    \
-         --notest                   \
-         --no-man-pages             \
-         $CPANM_OPTS                \
-         -l "$BUILD_DIR/local"      \
-      | indent
-}
-
-__install_perl_dependencies() {
+__install_dependencies() {
    echo "-----> Installing dependencies"
    declare -a EPAN
    local _d d
@@ -92,37 +109,62 @@ __install_perl_dependencies() {
       | indent
 }
 
-build() {
-   local BUILD_DIR="$1"
-   local ENV_DIR="$2"
-
-   # execute in subshell to avoid change directory side effects
-   (
-      cd "$BUILD_DIR"
-
-      local CPANM_OPTS="$(_get_var "$ENV/PERL_CPANM_OPTS" "$CPANM_OPTS")"
-      [ ! -e "$BUILD_DIR/local/bin/cpanm" ] && __bootstrap_cpanm
-      __install_perl_dependencies
-   )
+__install_cpanm() {
+   [ -e "$BUILD_DIR/local/bin/cpanm" ] && return
+   echo "-----> Bootstrapping cpanm"
+   curl -L --silent "$CPANM"        \
+      | perl - App::cpanminus 2>&1  \
+         --quiet                    \
+         --notest                   \
+         --no-man-pages             \
+         $CPANM_OPTS                \
+         -l "$BUILD_DIR/local"      \
+      | indent
+   relocate "$BUILD_DIR/local/bin/cpanm"
 }
 
-prepare_run_environment() {
-   local BUILD_DIR="$1"
-
-   mkdir -p "$BUILD_DIR/.profile.d"
-   cat > "$BUILD_DIR/.profile.d/perl-env.sh" <<'END'
-export PATH="$HOME/local/bin:$HOME/bin:$PATH"
-export PERL5LIB="$HOME/local/lib/perl5:$PERL5LIB"
-END
+__restore_system_perl() {
+   rm -rf "$BUILD_DIR/local/perl"
+   rm -f "$BUILD_DIR/local/bin/cpanm"
 }
 
-copy_thing() {
-   local THING="$1"
-   local SOURCE_DIR="$2"
-   local DESTINATION_DIR="$3"
-   rm -rf "$DESTINATION_DIR/$THING"
-   if [ -d "$SOURCE_DIR/$THING" ]; then
-      cp -a "$SOURCE_DIR/$THING" "$DESTINATION_DIR"
+__install_perl() {
+   local FLAG_FILE="$BUILD_DIR/.perl-archive"
+
+   # revert to system perl if no custom one is requested
+   if [ ! -r "$FLAG_FILE" ] ; then
+      [ -d "$BUILD_DIR/local/perl" ] && __restore_system_perl
+      return 0
+   fi
+
+   # if the requested perl did not change... do nothing
+   local LOCAL_FLAG_FILE="$BUILD_DIR/local/.perl-archive"
+   diff >/dev/null 2>&1 "$FLAG_FILE" "$LOCAL_FLAG_FILE" \
+      && return 0
+
+   # remove any previous custom perl, we have to change it anyway
+   __restore_system_perl
+
+   # download and extract new one
+   local URL="$(<"$BUILD_DIR/.perl-archive")"
+   curl -s -L "$URL" | tar xzf -
+
+   # move to target place, then make hash-bangs general
+   local ARCHIVE="${URL##*/}"
+   local VERSION="${ARCHIVE%.tar*}"
+   mv "$VERSION" "$BUILD_DIR/local/perl"
+   relocate "$BUILD_DIR/local/perl/bin"/*
+
+   # save flag file for comparison in next build
+   cp "$FLAG_FILE" "$LOCAL_FLAG_FILE"
+}
+
+copy_local() {
+   local SOURCE_DIR="$1"
+   local DESTINATION_DIR="$2"
+   rm -rf "$DESTINATION_DIR/local"
+   if [ -d "$SOURCE_DIR/local" ]; then
+      cp -a "$SOURCE_DIR/local" "$DESTINATION_DIR"
    fi
 
 }
@@ -134,6 +176,13 @@ ensure_dir() {
 
 indent() {
   sed -u 's/^/       /'
+}
+
+relocate() {
+   local F
+   for F in "$@" ; do
+      perl -i -ple 's{^#!.*perl\s*$}{#!/usr/bin/env perl} if $. == 1' "$f"
+   done
 }
 
 main "$@"
