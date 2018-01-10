@@ -189,7 +189,6 @@ indent() {
 perl_script_relocate() {
    local F
    for F in "$@" ; do
-      echo "relocating '$F'"
       perl -i -ple 's{^#!.*perl\s*$}{#!/usr/bin/env perl} if $. == 1' "$F"
    done
 }
