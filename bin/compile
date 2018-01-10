@@ -120,7 +120,7 @@ __install_cpanm() {
          $CPANM_OPTS                \
          -l "$BUILD_DIR/local"      \
       | indent
-   relocate "$BUILD_DIR/local/bin/cpanm"
+   perl_script_relocate "$BUILD_DIR/local/bin/cpanm" | indent
 }
 
 __restore_system_perl() {
@@ -159,8 +159,9 @@ __install_perl() {
       # move to target place, then make hash-bangs general
       local ARCHIVE="${URL##*/}"
       local VERSION="${ARCHIVE%.tar*}"
+      echo "archive is '$ARCHIVE', extracted directory '$VERSION'"
       mv "$VERSION" "$BUILD_DIR/local/perl"
-      relocate "$BUILD_DIR/local/perl/bin"/*
+      perl_script_relocate "$BUILD_DIR/local/perl/bin"/*
 
       # save flag file for comparison in next build
       cp "$FLAG_FILE" "$LOCAL_FLAG_FILE"
@@ -186,9 +187,10 @@ indent() {
   sed -u 's/^/       /'
 }
 
-relocate() {
+perl_script_relocate() {
    local F
    for F in "$@" ; do
+      echo "relocating '$F'"
       perl -i -ple 's{^#!.*perl\s*$}{#!/usr/bin/env perl} if $. == 1' "$f"
    done
 }
