@@ -12,7 +12,7 @@ main() {
    local CACHE_DIR="$(ensure_dir "$2")"
    local ENV_DIR="$(ensure_dir "$3")"
 
-   [ -n "$BUILDPACK_VERBOSE" ] && __print_buildpack_details
+   [ -n "$BUILDPACK_VERBOSE" ] && __main_print_buildpack_details
 
    # use "new stuff" as much as possible. The custom "perl" will be wiped
    # out if return to system perl is requested, so no harm in including
@@ -45,13 +45,13 @@ build() {
       cd "$BUILD_DIR"
 
       echo "-----> Installing perl"
-      __install_perl
+      __build_install_perl
 
       echo "-----> Installing cpanm"
-      __install_cpanm
+      __build_install_cpanm
 
       echo "-----> Installing dependencies"
-      __install_dependencies
+      __build_install_dependencies
    )
 }
 
@@ -67,7 +67,7 @@ export PERL5LIB="$HOME/local/lib/perl5:$PERL5LIB"
 END
 }
 
-__print_buildpack_details() {
+__main_print_buildpack_details() {
    echo "-----> 'compile' parameters"
    {
       env | sort
@@ -91,30 +91,72 @@ _get_var() {
    fi
 }
 
-__install_dependencies() {
-   declare -a EPAN
+__build_install_dependencies_add_epan_dirs() {
+   # sweep possible DarkPAN candidates
    local _d d
    for _d in epan dpan ; do
       d="$PWD/$_d"
       [ -d "$d" ] || continue
       EPAN=("${EPAN[@]}" '--mirror' "file://$d")
    done
+
+   # if something was actually found, insist on using mirrors only
+   # and make sure www.cpan.org is present but at the end, so that it
+   # can be overridden
    if [ "${#EPAN[@]}" -gt 0 ] ; then
       # append "usual" mirrors and use mirrors for index
       EPAN=("${EPAN[@]}" '--mirror' 'http://www.cpan.org' '--mirror-only')
    fi
+}
+
+__build_install_dependencies() {
+   # this will contain all our local DarkPANs, safely across
+   # recursive calls (i.e. it will accumulate ancestors but not
+   # clutter them or siblings)
+   declare -a EPAN=("${EPAN[@]}")
+   __build_install_dependencies_add_epan_dirs
+
+   # do stuff from gitpan first, because it's not in the records or
+   # has to override stuff in the records
+   [ -e gitpanfile ] && __build_install_dependencies_gitpanm
+
+   # proceed with regular stuff
+   __build_install_dependencies_cpanm --installdeps .
+}
+
+__build_install_dependencies_gitpanm() {
+   local GPM_DIR="$BUILD_DIR/local/gitpanm"
+   mkdir -p "$GPM_DIR"
+   cat gitpanfile | while read name repo commit ; do
+      # subshell here, yay! Get the code
+      cd "$GPM_DIR"
+      [ -d "$name" ] || git clone "$repo" "$name"
+      cd "$name"
+      [ -n "$commit" ] && git checkout "$commit"
+
+      # recurse for installing this repo's dependencies
+      __build_install_dependencies
+
+      # install the very library
+      cd "$GPM_DIR"
+      __build_install_dependencies_cpanm "./$name"
+   done
+}
+
+__build_install_dependencies_cpanm() {
+   # now do the actual installation heavylifting
    cpanm 2>&1                 \
       --no-man-pages          \
       $CPANM_OPTS             \
-      $(_get_var "$ENV/BUILDPACK_CPANM_VERBOSE" '--quiet') \
-      $(_get_var "$ENV/BUILDPACK_CPANM_TEST" '--notest')   \
+      $(_get_var "$ENV_DIR/BUILDPACK_CPANM_VERBOSE" '--quiet') \
+      $(_get_var "$ENV_DIR/BUILDPACK_CPANM_TEST" '--notest')   \
       -l "$BUILD_DIR/local"   \
       "${EPAN[@]}"            \
-      --installdeps .         \
+      "$@"                    \
       | indent
 }
 
-__install_cpanm() {
+__build_install_cpanm() {
    [ -e "$BUILD_DIR/local/bin/cpanm" ] && return
    curl -L --silent "$CPANM"        \
       | perl - App::cpanminus 2>&1  \
@@ -127,17 +169,17 @@ __install_cpanm() {
    perl_script_relocate "$BUILD_DIR/local/bin/cpanm" | indent
 }
 
-__restore_system_perl() {
+__build_install_perl_restore_system_perl() {
    echo 'restoring system perl'
    rm -rf "$BUILD_DIR/local"/{bin,lib,perl}
 }
 
-__install_perl() {
+__build_install_perl() {
    local FLAG_FILE="$BUILD_DIR/.perl-archive"
 
    # revert to system perl if no custom one is requested
    if [ ! -r "$FLAG_FILE" ] ; then
-      [ -d "$BUILD_DIR/local/perl" ] && __restore_system_perl | indent
+      [ -d "$BUILD_DIR/local/perl" ] && __build_install_perl_restore_system_perl | indent
       return 0
    fi
 
@@ -150,7 +192,7 @@ __install_perl() {
 
    {
       # remove any previous custom perl, we have to change it anyway
-      __restore_system_perl
+      __build_install_perl_restore_system_perl
 
       # download and extract new one
       local URL="$(<"$BUILD_DIR/.perl-archive")"
