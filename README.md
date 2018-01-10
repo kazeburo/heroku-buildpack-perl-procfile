@@ -24,10 +24,14 @@ Usage
 
 Example usage in Heroku (untested):
 
-    $ ls
+    $ ls -a
+    .perl-archive
     cpanfile
     Procfile
     lib/
+
+    $ cat .perl-archive
+    https://github.com/polettix/heroku-buildpack-perl-procfile/releases/download/v0.1-dokku/perl-5.26.1.tar.gz
 
     $ cat cpanfile
     requires 'Plack', '1.0000';
@@ -84,6 +88,31 @@ repo, you can use the suggestions provided in [custom buildpacks][]:
     $ ssh dokku@your-node.example.com config:set your-app \
         BUILDPACK_URL=https://github.com/polettix/heroku-buildpack-perl-procfile.git
 
+
+Custom Perl
+-----------
+
+You can optionally put a file `.perl-archive` with a URI to the archive
+containing a suitable version of `perl` to be used instead of system
+`perl`. You can find two such ones in the [releases of the
+repository][custom-perls], for versions `5.24.3` and `5.26.1`.
+
+If you want to create your own:
+
+- make sure it will run inside the container created by heroku/dokku
+  (compiling in [herokuish][] can be a good start)
+- pack it as a `tar.gz` including the upper compilation directory
+- name the archive the same as the directory (plus the `tar.gz`)
+- upload in some place you can reach
+- use the resulting URI inside `.perl-archive`
+
+For example, if you compile your new `perl` in
+`/path/to/perl-5.26.1`, then you can create the archive like this:
+
+    tar czf perl-5.26.1.tar.gz -C /path/to perl-5.26.1
+
+[custom-perls]: https://github.com/polettix/heroku-buildpack-perl-procfile/releases
+[herokuish]: https://github.com/gliderlabs/herokuish
 
 Libraries
 ---------
