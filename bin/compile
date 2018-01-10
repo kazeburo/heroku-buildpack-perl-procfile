@@ -125,8 +125,7 @@ __install_cpanm() {
 
 __restore_system_perl() {
    echo 'restoring system perl'
-   rm -rf "$BUILD_DIR/local/perl"
-   rm -f "$BUILD_DIR/local/bin/cpanm"
+   rm -rf "$BUILD_DIR/local"/{bin,lib,perl}
 }
 
 __install_perl() {
