@@ -134,7 +134,12 @@ __build_install_dependencies_gitpanm() {
       cd "$GPM_DIR"
       [ -d "$name" ] || git clone "$repo" "$name"
       cd "$name"
-      [ -n "$commit" ] && git checkout "$commit"
+      git fetch
+      if [ -n "$commit" ] ; then
+         git checkout "$commit"
+      else
+         git pull "$(git rev-parse --abbrev-ref HEAD)"
+      fi
 
       # recurse for installing this repo's dependencies
       __build_install_dependencies
