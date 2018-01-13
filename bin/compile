@@ -125,9 +125,11 @@ __build_install_dependencies() {
 }
 
 __build_install_dependencies_gitpanm() {
+   echo "detected gitpanfile" | indent
    local GPM_DIR="$BUILD_DIR/local/gitpanm"
    mkdir -p "$GPM_DIR"
    cat gitpanfile | while read name repo commit ; do
+      echo "gitpanfile -> $name $repo $commit" | indent
       # subshell here, yay! Get the code
       cd "$GPM_DIR"
       [ -d "$name" ] || git clone "$repo" "$name"
