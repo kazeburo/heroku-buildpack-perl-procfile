@@ -43,6 +43,7 @@ build() {
    (
       local CPANM_OPTS="$(_get_var "$ENV/PERL_CPANM_OPTS" "$CPANM_OPTS")"
       cd "$BUILD_DIR"
+      mkdir -p 'local'
 
       echo "-----> Installing perl"
       __build_install_perl
@@ -213,7 +214,6 @@ __build_install_perl() {
       local ARCHIVE="${URL##*/}"
       local VERSION="${ARCHIVE%.tar*}"
       echo "archive is '$ARCHIVE', extracted directory '$VERSION'"
-      mkdir -p "$BUILD_DIR/local"
       mv "$VERSION" "$BUILD_DIR/local/perl"
       perl_script_relocate "$BUILD_DIR/local/perl/bin"/*
 
