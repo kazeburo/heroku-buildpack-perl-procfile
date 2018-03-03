@@ -117,6 +117,35 @@ For example, if you compile your new `perl` in
 Libraries
 ---------
 
+There are several ways you can declare dependencies:
+
+- [Carton][carton]
+- [CPAN Minus][cpanm]
+- Git repositories
+
+More info in the subsections!
+
+### Carton
+
+If you use [Carton][carton] you will feel at home. Whenever file
+`cpanfile.snapshot` is found, it is used for installing modules via
+`carton --deployment`.
+
+If you generate a bundle of all distribution packages using `carton
+bundle` and include it in the repository that is pushed, option `--cached`
+is added during installation so that it is used. This allows you to avoid
+hitting the internet (e.g. if you're behind some firewall, or you want to
+ship private modules).
+
+You can also provide your own version of [Carton][carton] by including it
+in `vendor/bin/carton` (which is where [Carton][carton] puts the fatpacked
+version of itself, if you ask it to do so).
+
+### CPAN Minus
+
+This method is alternative to the *Carton* method above, and used only if
+`cpanfile.snapshot` is not present.
+
 Dependencies can be declared using `cpanfile` (recommended) or more
 traditional `Makefile.PL`, `Build.PL` and `META.json` (whichever you can
 install with `cpanm --installdeps`), and the buildpack will install these
@@ -144,7 +173,28 @@ set as a `--mirror` for [cpanm][] *before*
 patched versions of official modules.
 
 
+### Git repositories
+
+Independently of whether you use [Carton][carton] or not, you can also
+install the latest and greatest from a git repository by providing a
+`gitpanfile`.
+
+This file contains lines with the following format:
+
+    <name> <repo-url> <commit>
+
+No empty lines, no comment lines, etc. etc. patches welcome etc. etc.
+
+The `<commit>` part is optional and allows you to settle on a specific
+commit (otherwise the latest of the default branch is taken).
+
+The process is simple: the repository is cloned (or pulled), the specified
+commit is optionally checked out, and the installation is performed
+recursively.
+
+
 [cpanm]: http://cpanmin.us
+[carton]: https://metacpan.org/release/Carton
 [epan]: https://github.com/polettix/epan
 [OrePAN2]: https://github.com/tokuhirom/OrePAN2
 [CPAN::Faker]: https://metacpan.org/pod/CPAN::Faker
