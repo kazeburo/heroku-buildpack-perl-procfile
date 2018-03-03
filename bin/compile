@@ -122,7 +122,12 @@ __build_install_dependencies() {
    [ -e gitpanfile ] && __build_install_dependencies_gitpanm
 
    # proceed with regular stuff
-   __build_install_dependencies_cpanm --installdeps .
+   if [ -e 'cpanfile.snapshot' ] ; then
+      __build_install_dependencies_carton
+   else
+      # use cpanm, possibly taking array EPAN in consideration
+      __build_install_dependencies_cpanm --installdeps .
+   fi
 }
 
 __build_install_dependencies_gitpanm() {
@@ -149,6 +154,24 @@ __build_install_dependencies_gitpanm() {
       cd "$GPM_DIR"
       __build_install_dependencies_cpanm "./$name"
    done
+}
+
+__build_install_dependencies_carton() {
+   local CARTON=carton
+   local PRIVATE_CARTON='vendor/bin/carton'
+   [ -x "$PRIVATE_CARTON" ] && CARTON="$PRIVATE_CARTON"
+
+   declare -a PARAMS=('install' '--deployment')
+   [ -d 'vendor/cache' ] && PARAMS=("${PARAMS[@]}" '--cached')
+
+   # if we're recurring, chances are that carton will try to install
+   # stuff in the wrong place, so we have to attempt something
+   if [ "$(readlink -f "$BUILD_DIR")" != "$(readlink -f '.')" ] ; then
+      # try to make "local" point to the *right* local, or cross fingers
+      [ -e local ] || ln -s "$BUILD_DIR/local"
+   fi
+
+   "$CARTON" "${PARAMS[@]}"
 }
 
 __build_install_dependencies_cpanm() {
