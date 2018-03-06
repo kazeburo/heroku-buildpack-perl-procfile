@@ -188,19 +188,22 @@ __build_install_dependencies_cpanm() {
 }
 
 __build_install_cpanm_and_carton() {
-   [ -e "$BUILD_DIR/local/bin/cpanm" ] && return
-   curl -L --silent "$CPANM"        \
-      | perl - App::cpanminus 2>&1  \
-         --quiet                    \
-         --notest                   \
-         --no-man-pages             \
-         $CPANM_OPTS                \
-         -l "$BUILD_DIR/local"      \
-      | indent
-   perl_script_relocate "$BUILD_DIR/local/bin/cpanm" | indent
+   if [ ! -e "$BUILD_DIR/local/bin/cpanm" ] ; then
+      curl -L --silent "$CPANM"        \
+         | perl - App::cpanminus 2>&1  \
+            --quiet                    \
+            --notest                   \
+            --no-man-pages             \
+            $CPANM_OPTS                \
+            -l "$BUILD_DIR/local"      \
+         | indent
+      perl_script_relocate "$BUILD_DIR/local/bin/cpanm" | indent
+   fi
 
-   __build_install_dependencies_cpanm Carton
-   perl_script_relocate "$BUILD_DIR/local/bin/carton" | indent
+   if [ ! -e "$BUILD_DIR/local/bin/carton" ] ; then
+      __build_install_dependencies_cpanm Carton
+      perl_script_relocate "$BUILD_DIR/local/bin/carton" | indent
+   fi
 }
 
 __build_install_perl_restore_system_perl() {
