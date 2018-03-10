@@ -134,18 +134,28 @@ __build_install_dependencies_gitpanm() {
    echo "detected gitpanfile" | indent
    local GPM_DIR="$BUILD_DIR/local/gitpanm"
    mkdir -p "$GPM_DIR"
+
+   # iterate through gitpanfile, one line at a time
    cat gitpanfile | while read name repo commit ; do
-      echo "gitpanfile -> $name $repo $commit" | indent
-      # subshell here, yay! Get the code
+
+      # skip entries that make no sense
+      [[ -z "$name" ]]           && continue # empty lines
+      [[ "${name:0:1}" == '#' ]] && continue # comment lines
+
+      # "while" subshell here, changing directory remains localized yay!
       cd "$GPM_DIR"
-      [ -d "$name" ] || git clone "$repo" "$name"
-      cd "$name"
-      git fetch
-      if [ -n "$commit" ] ; then
-         git checkout "$commit"
-      else
-         git pull origin "$(git rev-parse --abbrev-ref HEAD)"
-      fi
+
+      { # grouping, for redirection to indent
+         echo "gitpanfile -> $name $repo $commit"
+         [ -d "$name" ] || git clone "$repo" "$name"
+         cd "$name"
+         git fetch
+         if [ -n "$commit" ] ; then
+            git checkout "$commit"
+         else
+            git pull origin "$(git rev-parse --abbrev-ref HEAD)"
+         fi
+      } 2>&1 | indent
 
       # recurse for installing this repo's dependencies
       __build_install_dependencies
