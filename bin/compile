@@ -147,7 +147,6 @@ __build_install_dependencies_gitpanm() {
 
       { # grouping, for redirection to indent
          echo "gitpanfile -> $name $repo $commit"
-         echo "name<$name> is neither empty nor comment"
          [ -d "$name" ] || git clone "$repo" "$name"
          cd "$name"
          git fetch
